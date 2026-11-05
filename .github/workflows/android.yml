@@ -26,14 +26,26 @@ jobs:
           gradle-version: "8.9"
 
       - name: Extract Project ZIP
-        run: unzip -q Exitbar_GitHub_Build_Project.zip
+        run: unzip -q Exitbar_GitHub_Build_Project.zip -d extracted
+
+      - name: Find Android Project
+        id: project
+        shell: bash
+        run: |
+          SETTINGS_FILE=$(find extracted -name settings.gradle.kts -print -quit)
+          if [ -z "$SETTINGS_FILE" ]; then
+            echo "settings.gradle.kts not found"
+            exit 1
+          fi
+          PROJECT_DIR=$(dirname "$SETTINGS_FILE")
+          echo "project_dir=$PROJECT_DIR" >> "$GITHUB_OUTPUT"
 
       - name: Build APK
-        working-directory: Exitbar_GitHub_Build_Project
-        run: gradle --no-daemon assembleDebug
+        run: gradle --no-daemon -p "${{ steps.project.outputs.project_dir }}" assembleDebug
 
       - name: Upload APK
         uses: actions/upload-artifact@v4
         with:
           name: Exitbar-APK
-          path: Exitbar_GitHub_Build_Project/app/build/outputs/apk/debug/*.apk
+          path: ${{ steps.project.outputs.project_dir }}/app/build/outputs/apk/debug/*.apk
+          if-no-files-found: error
